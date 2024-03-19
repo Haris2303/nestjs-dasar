@@ -1,0 +1,12 @@
+POST http://localhost:8000/api/users/login?name=test
+Content-Type: application/json
+
+{
+    "username": "otong",
+    "password": "otong"
+}
+
+####
+
+GET http://localhost:8000/api/users/current
+x-username: 1

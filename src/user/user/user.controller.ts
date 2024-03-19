@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
@@ -7,12 +8,16 @@ import {
   HttpRedirectResponse,
   Inject,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Redirect,
   Req,
   Res,
   UseFilters,
+  UseGuards,
+  UseInterceptors,
+  UsePipes,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { UserService } from './user.service';
@@ -22,6 +27,15 @@ import { UserRepository } from '../user-repository/user-repository';
 import { MemberService } from '../member/member.service';
 import { User } from '@prisma/client';
 import { ValidationFilter } from 'src/validation/validation.filter';
+import {
+  LoginUserRequest,
+  loginUserRequestValidation,
+} from 'src/model/login.model';
+import { ValidationPipe } from 'src/validation/validation.pipe';
+import { TimeInterceptor } from 'src/time/time.interceptor';
+import { Auth } from 'src/auth/auth.decorator';
+import { RoleGuard } from 'src/role/role.guard';
+import { Roles } from 'src/role/roles.decorator';
 
 @Controller('/api/users')
 export class UserController {
@@ -33,6 +47,25 @@ export class UserController {
     private userRepository: UserRepository,
     private memberService: MemberService,
   ) {}
+
+  @Get('/current')
+  @Roles(['admin', 'operator'])
+  current(@Auth() user: User): Record<string, any> {
+    return {
+      data: `Hello ${user.first_name} ${user.last_name}`,
+    };
+  }
+
+  @UsePipes(new ValidationPipe(loginUserRequestValidation))
+  @UseFilters(ValidationFilter)
+  @Post('/login')
+  @Header('Content-Type', 'application/json')
+  @UseInterceptors(TimeInterceptor)
+  login(@Query('name') name: string, @Body() request: LoginUserRequest) {
+    return {
+      data: `Hello ${request.username}`,
+    };
+  }
 
   @Get('/connection')
   async getConnection(): Promise<string> {
@@ -111,8 +144,9 @@ export class UserController {
   }
 
   @Get('/:id')
-  getById(@Req() request: Request): string {
-    return `GET ${request.params.id}`;
+  getById(@Param('id', ParseIntPipe) id: number): string {
+    console.info(id * 10);
+    return `GET ${id}`;
   }
 
   @Post()
